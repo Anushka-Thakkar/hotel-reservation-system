@@ -5,14 +5,14 @@ public class Main {
 
     private static final String URL = "jdbc:mysql://localhost:3306/hotel_db";
     private static final String USER = "root";
-    private static final String PASSWORD = "root1234"; // 👉 change if needed
+    private static final String PASSWORD = "password"; //enter your root password
 
     public static void main(String[] args) {
 
-        try {
-            Class.forName("com.mysql.cj.jdbc.Driver");
-            Connection connection = DriverManager.getConnection(URL, USER, PASSWORD);
-            Scanner scanner = new Scanner(System.in);
+        try (
+                Connection connection = DriverManager.getConnection(URL, USER, PASSWORD);
+                Scanner scanner = new Scanner(System.in)
+        ) {
 
             while (true) {
                 System.out.println("\n===== HOTEL MANAGEMENT SYSTEM =====");
@@ -44,8 +44,6 @@ public class Main {
                         break;
                     case 0:
                         System.out.println("Exiting...");
-                        scanner.close();
-                        connection.close();
                         return;
                     default:
                         System.out.println("Invalid choice!");
@@ -59,7 +57,7 @@ public class Main {
 
     private static void reserveRoom(Connection conn, Scanner sc) {
         try {
-            sc.nextLine(); // clear buffer
+            sc.nextLine();
             System.out.print("Enter guest name: ");
             String name = sc.nextLine();
 
@@ -69,12 +67,14 @@ public class Main {
             System.out.print("Enter contact number: ");
             String contact = sc.next();
 
-            String sql = "INSERT INTO reservations (guest_name, room_number, contact_number) VALUES ('"
-                    + name + "', " + room + ", '" + contact + "')";
+            String sql = "INSERT INTO reservations (guest_name, room_number, contact_number) VALUES (?, ?, ?)";
 
-            Statement stmt = conn.createStatement();
-            int rows = stmt.executeUpdate(sql);
+            PreparedStatement pstmt = conn.prepareStatement(sql);
+            pstmt.setString(1, name);
+            pstmt.setInt(2, room);
+            pstmt.setString(3, contact);
 
+            int rows = pstmt.executeUpdate();
             System.out.println(rows > 0 ? "Reservation successful!" : "Failed!");
 
         } catch (Exception e) {
@@ -85,10 +85,12 @@ public class Main {
     private static void viewReservations(Connection conn) {
         try {
             String sql = "SELECT * FROM reservations";
-            Statement stmt = conn.createStatement();
-            ResultSet rs = stmt.executeQuery(sql);
+
+            PreparedStatement pstmt = conn.prepareStatement(sql);
+            ResultSet rs = pstmt.executeQuery();
 
             System.out.println("\n--- All Reservations ---");
+
             while (rs.next()) {
                 System.out.println(
                         rs.getInt("reservation_id") + " | " +
@@ -109,9 +111,12 @@ public class Main {
             System.out.print("Enter reservation ID: ");
             int id = sc.nextInt();
 
-            String sql = "SELECT room_number FROM reservations WHERE reservation_id = " + id;
-            Statement stmt = conn.createStatement();
-            ResultSet rs = stmt.executeQuery(sql);
+            String sql = "SELECT room_number FROM reservations WHERE reservation_id = ?";
+
+            PreparedStatement pstmt = conn.prepareStatement(sql);
+            pstmt.setInt(1, id);
+
+            ResultSet rs = pstmt.executeQuery();
 
             if (rs.next()) {
                 System.out.println("Room Number: " + rs.getInt("room_number"));
@@ -139,14 +144,15 @@ public class Main {
             System.out.print("Enter new contact: ");
             String contact = sc.next();
 
-            String sql = "UPDATE reservations SET guest_name='" + name +
-                    "', room_number=" + room +
-                    ", contact_number='" + contact +
-                    "' WHERE reservation_id=" + id;
+            String sql = "UPDATE reservations SET guest_name = ?, room_number = ?, contact_number = ? WHERE reservation_id = ?";
 
-            Statement stmt = conn.createStatement();
-            int rows = stmt.executeUpdate(sql);
+            PreparedStatement pstmt = conn.prepareStatement(sql);
+            pstmt.setString(1, name);
+            pstmt.setInt(2, room);
+            pstmt.setString(3, contact);
+            pstmt.setInt(4, id);
 
+            int rows = pstmt.executeUpdate();
             System.out.println(rows > 0 ? "Updated!" : "Failed!");
 
         } catch (Exception e) {
@@ -159,10 +165,12 @@ public class Main {
             System.out.print("Enter reservation ID: ");
             int id = sc.nextInt();
 
-            String sql = "DELETE FROM reservations WHERE reservation_id=" + id;
-            Statement stmt = conn.createStatement();
-            int rows = stmt.executeUpdate(sql);
+            String sql = "DELETE FROM reservations WHERE reservation_id = ?";
 
+            PreparedStatement pstmt = conn.prepareStatement(sql);
+            pstmt.setInt(1, id);
+
+            int rows = pstmt.executeUpdate();
             System.out.println(rows > 0 ? "Deleted!" : "Failed!");
 
         } catch (Exception e) {
